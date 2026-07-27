@@ -1,0 +1,22 @@
+# Secrets and personal fleet maps
+.env
+.env.*
+!.env.example
+fleet.local.json
+
+# Generated
+out/
+__pycache__/
+*.pyc
+.pytest_cache/
+.hive-fleet-watchdog-state.json
+*.egg-info/
+.venv/
+venv/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+Desktop.ini
+.vscode/
+.idea/

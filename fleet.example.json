@@ -1,0 +1,73 @@
+{
+  "_comment": "Copy to fleet.local.json (gitignored) and edit. Worker Hive IDs come from the Hive API.",
+  "pool_min_khs": 12.0,
+  "always_on_pool_names": ["RIG-A", "RIG-B"],
+  "expected_pool_workers": [
+    "RIG-A",
+    "RIG-B",
+    "RIG-FLEX-1",
+    "RIG-FLEX-2",
+    "RIG-ONDEMAND"
+  ],
+  "workers": {
+    "11111111": {
+      "name": "RIG-A",
+      "role": "always_on",
+      "owner": "you",
+      "note": "24/7 core rig",
+      "min_hashrate_khs": 10.0,
+      "temp_warn_c": 72.0,
+      "temp_alert_c": 85.0
+    },
+    "22222222": {
+      "name": "RIG-B",
+      "role": "always_on",
+      "owner": "you",
+      "note": "24/7 pair — watch thermals",
+      "min_hashrate_khs": 4.0,
+      "temp_warn_c": 75.0,
+      "temp_alert_c": 80.0
+    },
+    "33333333": {
+      "name": "RIG-ONDEMAND",
+      "role": "on_demand",
+      "owner": "family",
+      "note": "Offline is normal unless asked to mine",
+      "min_hashrate_khs": 0.0,
+      "temp_warn_c": 78.0,
+      "temp_alert_c": 88.0
+    }
+  },
+  "known_by_name": {
+    "RIG-A": {
+      "role": "always_on",
+      "owner": "you",
+      "note": "24/7 · Hive + HashVault",
+      "os": "Hive OS"
+    },
+    "RIG-B": {
+      "role": "always_on",
+      "owner": "you",
+      "note": "24/7 · watch thermals",
+      "os": "Hive OS"
+    },
+    "RIG-ONDEMAND": {
+      "role": "on_demand",
+      "owner": "family",
+      "note": "Mine only when asked",
+      "os": "Hive OS"
+    },
+    "RIG-FLEX-1": {
+      "role": "flex",
+      "owner": "you",
+      "note": "Flexible — on/off by power/heat",
+      "os": "Linux"
+    },
+    "RIG-FLEX-2": {
+      "role": "flex",
+      "owner": "you",
+      "note": "Flexible Windows box",
+      "os": "Windows"
+    }
+  }
+}
