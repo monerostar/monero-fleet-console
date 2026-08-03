@@ -5,6 +5,11 @@ Silent when configured always-on rigs are healthy (or same fingerprint
 already delivered). Prints a short report when they go offline, overheat,
 or drop below hashrate floors. On-demand / flex offline is normal.
 
+Exit code contract:
+  0  healthy, or same alert fingerprint as last run (deduped, silent)
+  1  fresh alert printed to stdout — something needs a human
+  2  repo/env not found
+
 Environment:
   HIVEOS_API_TOKEN, HIVEOS_FARM_ID  (or project .env)
   FLEET_CONSOLE_ROOT  optional override to repo path

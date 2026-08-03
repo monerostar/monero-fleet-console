@@ -149,6 +149,12 @@ def run_watchdog(
     hv: HashVaultSnapshot | None = None,
     node: MoneroNodeSnapshot | None = None,
 ) -> tuple[int, str]:
+    """Fail-only watchdog.
+
+    Returns:
+        (0, "")   healthy or same fingerprint as last alert (deduped)
+        (1, msg)  fresh alert message to deliver to a human
+    """
     msg = watchdog_message(snap, include_warns=include_warns, hv=hv, node=node)
     if msg is None:
         st = load_state(state_path)
@@ -167,4 +173,4 @@ def run_watchdog(
     st["last_alert_at"] = snap.fetched_at
     st["last_message_preview"] = msg.splitlines()[:8]
     save_state(state_path, st)
-    return 0, msg
+    return 1, msg
