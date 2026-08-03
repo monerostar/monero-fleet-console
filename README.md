@@ -83,7 +83,18 @@ python fleet_status.py --watchdog          # silent if healthy / de-duped
 python scripts/hive-fleet-watchdog.py      # same idea for cron wrappers
 ```
 
-Non-zero / stdout only when something needs a human. Soft-warns if combined HashVault wallet HR drops below `pool_min_khs` (default 12), or configured always-on pool workers go offline.
+**Exit code contract (both entrypoints):**
+
+| Exit | Meaning |
+|------|---------|
+| `0` | Healthy, or the same alert was already delivered (deduped) — silent |
+| `1` | Fresh alert — stdout has the report, something needs a human |
+| `2` | Config / repo lookup failure (fleet_status.py `--watchdog`) |
+
+Stdout only when a fresh alert fires, so a cron wrapper that delivers
+non-empty stdout gets paged exactly when something changed. Soft-warns if
+combined HashVault wallet HR drops below `pool_min_khs` (default 12), or
+configured always-on pool workers go offline.
 
 Wire it into your own scheduler (Hermes cron, Task Scheduler, systemd timer, …).
 
