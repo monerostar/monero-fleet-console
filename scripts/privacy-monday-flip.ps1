@@ -12,7 +12,7 @@ function Log([string]$m) {
 Log 'BEGIN privacy Monday flip (lottery foot)'
 
 # Hive: privacy flight sheets
-Log 'Hive: privacy FS 3950 + 3600XT + 3700X'
+Log 'Hive: privacy FS 3950 + 3600XT + 5700X always-on + 3700X Asher flex'
 python - << 'PY'
 import os, json, urllib.request
 from pathlib import Path
@@ -32,6 +32,7 @@ pairs=[
     (int(os.environ["HIVE_WORKER_3950X"]), int(os.environ["HIVE_FS_3950X_PRIV"]), "3950 privacy"),
     (int(os.environ["HIVE_WORKER_3600XT"]), int(os.environ["HIVE_FS_3600XT_PRIV"]), "3600XT privacy 5t"),
     (int(os.environ["HIVE_WORKER_3700X"]), int(os.environ["HIVE_FS_3700X_PRIV"]), "3700X privacy 8t Asher flex"),
+    (int(os.environ["HIVE_WORKER_5700X"]), int(os.environ["HIVE_FS_5700X_PRIV"]), "5700X privacy 15t"),
 ]
 
 def hive(path, method="GET", body=None):
@@ -72,4 +73,4 @@ try {
 Log 'Legion: leave stopped (test-only; start manual if wanted)'
 
 Log 'DONE Monday flip'
-Log 'Asher 3700X: privacy 8t when online; if at dad and offline, no alert'
+Log 'Always-on: 3950+3600XT+5700X. Asher 3700X flex ~10d/mo when home; offline OK'

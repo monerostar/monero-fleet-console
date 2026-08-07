@@ -4,8 +4,8 @@
 #   Legion: STOP mine (monitor can keep logging)
 #   Family7600X: privacy lottery OFF -> HashVault 10t ON
 #   5800X: privacy OFF -> HashVault 10t ON
-#   Hive 3950 + 3600XT + Asher 3700X: HashVault flight sheets
-#     3700X is flex (Asher home vs dad) — offline OK; apply FS when online
+#   Hive 3950 + 3600XT + 5700X always-on + Asher 3700X flex: HashVault sheets
+#     3700X flex (Asher ~10d/mo) — offline OK; apply FS when online
 $ErrorActionPreference = 'Continue'
 $Log = "C:\Users\Admin\src\monero-fleet-console\scripts\privacy-weekend-flip-last.log"
 function Log([string]$m) {
@@ -87,6 +87,7 @@ pairs=[
     (int(os.environ["HIVE_WORKER_3600XT"]), int(os.environ["HIVE_FS_3600XT_HV"]), "3600XT cool HV"),
     (int(os.environ["HIVE_WORKER_3950X"]), int(os.environ["HIVE_FS_3950X_HV"]), "3950 tuned HV"),
     (int(os.environ["HIVE_WORKER_3700X"]), int(os.environ["HIVE_FS_3700X_HV"]), "3700X HV 8t Asher flex"),
+    (int(os.environ["HIVE_WORKER_5700X"]), int(os.environ["HIVE_FS_5700X_HV"]), "5700X HV 15t"),
 ]
 
 def hive(path, method="GET", body=None):
