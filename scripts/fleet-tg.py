@@ -122,6 +122,35 @@ def cmd_help() -> str:
     return HELP
 
 
+def read_ssh_status(host: str, path: str, box_label: str, timeout: int = 12) -> str:
+    """Cat a per-box fleet-status.json over SSH (written by a local cron/task)."""
+    try:
+        # Windows hosts use cmd.exe as the SSH shell: quote the path with double
+        # quotes inside the remote command; Linux passes the path as-is.
+        if host in ("family-7600x", "legion-go"):
+            cat_cmd = f'type "{path}"'
+        else:
+            cat_cmd = f"cat {path}"
+        r = subprocess.run(
+            ["ssh", "-o", "BatchMode=yes", "-o", f"ConnectTimeout={timeout}", host, cat_cmd],
+            capture_output=True, text=True, timeout=timeout + 8,
+        )
+        if r.returncode != 0 or not r.stdout.strip():
+            return f"  {box_label:7} UNREACHABLE"
+        # PowerShell 5.1 Set-Content -Encoding utf8 writes a UTF-8 BOM; strip it
+        text = r.stdout.lstrip("\ufeff").strip()
+        data = json.loads(text)
+        if not data.get("online"):
+            return f"  {box_label:7} OFFLINE   -"
+        # hr_10s is H/s; display as kH with one decimal (e.g. 5712.7 -> 5.7kH)
+        hr_hs = float(data.get("hr_10s", 0))
+        hr_kh = hr_hs / 1000.0
+        pool = (data.get("pool") or "?").split(":")[0]
+        return f"  {box_label:7} PRIV     {hr_kh:.1f}kH  {pool}"
+    except Exception:  # noqa: BLE001
+        return f"  {box_label:7} UNREACHABLE"
+
+
 def cmd_status(farm: str) -> str:
     lines = ["Fleet:"]
     for b in boxes():
@@ -135,6 +164,11 @@ def cmd_status(farm: str) -> str:
             lines.append(f"  {b['name']:7} {tag:7} {hr}{tmp}")
         except Exception:
             lines.append(f"  {b['name']:7} ERROR")
+    # Non-Hive boxes: read per-box status files over SSH
+    lines.append("  ---")
+    lines.append(read_ssh_status("linux-5800x", "/home/hermes/fleet-status.json", "5800X"))
+    lines.append(read_ssh_status("family-7600x", "C:\\xmrig\\fleet-status.json", "Family"))
+    lines.append(read_ssh_status("legion-go", "C:\\xmrig\\fleet-status.json", "Legion"))
     return "\n".join(lines)
 
 
