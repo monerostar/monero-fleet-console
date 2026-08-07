@@ -112,6 +112,8 @@ HELP = """Fleet commands (phone -> main Telegram):
   fleet 3950 hv|priv   same
   fleet 3600 hv|priv   same
   fleet 3700 hv|priv   same (Asher flex, offline OK)
+  fleet <box> stop  stop ONE box's miner (5700|3950|3600|3700|5800|family|legion)
+  fleet <box> start start ONE box's miner again
   fleet weekend     run Friday weekend flip now
   fleet monday      run Monday privacy flip now
   fleet legion on|off   test seat only
@@ -201,6 +203,65 @@ def cmd_set(args) -> str:
     return f"✅ {b['name']} -> {label} (FS {fs})"
 
 
+# Non-Hive box control: how to stop/start each standalone box over SSH.
+# (host, stop_cmd, start_cmd, label)
+NON_HIVE = {
+    "5800": {
+        "host": "linux-5800x",
+        "label": "5800X",
+        "stop": "pkill -f xmrig || true",
+        "start": "cd /home/hermes/xmrig/build/xmrig/build && nohup ./xmrig -c config-8t-privacy.json >/dev/null 2>&1 & echo STARTED",
+    },
+    "family": {
+        "host": "family-7600x",
+        "label": "Family",
+        "stop": "taskkill /F /IM xmrig.exe /T 2>nul",
+        "start": "schtasks /Run /tn family-lottery-10t 2>nul || start \"\" \"C:\\xmrig\\xmrig-6.26.0\\xmrig.exe\" -c \"C:\\xmrig\\xmrig-6.26.0\\config-10t-privacy.json\"",
+    },
+    "legion": {
+        "host": "legion-go",
+        "label": "Legion",
+        "stop": "taskkill /F /IM xmrig.exe /T 2>nul",
+        "start": "schtasks /Run /tn legion-privacy-6t 2>nul || start \"\" \"C:\\xmrig\\xmrig-6.26.0\\xmrig.exe\" -c \"C:\\xmrig\\xmrig-6.26.0\\config-6t-privacy.json\"",
+    },
+}
+
+
+def cmd_box_action(args) -> str:
+    """Per-box stop/start for Hive (API) and standalone (SSH) boxes."""
+    key = args.box.lower()
+    side = (args.side or "").lower()
+
+    # Hive boxes: miner stop/start via worker command
+    b = next((x for x in boxes() if x["key"] == key), None)
+    if b:
+        if side not in ("stop", "start"):
+            return f"Unknown action {args.side}. For Hive box use: fleet {key} stop|start"
+        farm = os.environ["HIVEOS_FARM_ID"]
+        action = "stop" if side == "stop" else "start"
+        r = hive(
+            f"/farms/{farm}/workers/{b['wid']}/command",
+            method="POST",
+            body={"command": "miner", "data": {"action": action}},
+        )
+        return f"✅ {b['name']} miner {action} (id={r.get('id')})"
+
+    # Standalone boxes
+    nh = NON_HIVE.get(key)
+    if not nh:
+        return f"Unknown box {args.box}. Try 5700, 3950, 3600, 3700, 5800, family, legion."
+    if side not in ("stop", "start"):
+        return f"Unknown action {args.side}. Use: fleet {key} stop|start"
+    cmd = nh["stop"] if side == "stop" else nh["start"]
+    r = subprocess.run(
+        ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=12", nh["host"], cmd],
+        capture_output=True, text=True, timeout=90,
+    )
+    out = (r.stdout or "").strip()
+    ok = r.returncode == 0 or "STARTED" in out or "SUCCESS" in out
+    return f"{nh['label']} {side}: {'OK' if ok else 'failed rc=' + str(r.returncode)}"
+
+
 def scaffold_share() -> float | None:
     if SHARE_FILE.exists():
         try:
@@ -274,7 +335,7 @@ def cmd_legion(args) -> str:
 def main() -> int:
     load_env()
     ap = argparse.ArgumentParser(description="fleet-tg dispatcher")
-    ap.add_argument("action", choices=["help", "status", "share", "set", "peel", "add", "weekend", "monday", "legion"])
+    ap.add_argument("action", choices=["help", "status", "share", "set", "peel", "add", "weekend", "monday", "legion", "box"])
     ap.add_argument("box", nargs="?", default=None)
     ap.add_argument("side", nargs="?", default=None)
     ap.add_argument("--share", default=None)
@@ -288,6 +349,10 @@ def main() -> int:
     if args.side and args.side.lower() in ("go", "apply"):
         args.apply = True
         args.side = None
+
+    # `fleet <box> <stop|start>` — box maps to a box action (not side)
+    if args.action == "set" and args.box and args.side in ("stop", "start"):
+        args.action = "box"
 
     # `fleet share 47` — positional lands in box, treat as share value
     if args.action == "share" and args.box is not None:
@@ -309,6 +374,8 @@ def main() -> int:
             print(cmd_share(args))
         elif args.action == "set":
             print(cmd_set(args))
+        elif args.action == "box":
+            print(cmd_box_action(args))
         elif args.action == "peel":
             print(cmd_peel_add(args, "peel"))
         elif args.action == "add":
