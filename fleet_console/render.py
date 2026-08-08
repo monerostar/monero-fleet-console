@@ -42,15 +42,19 @@ def _fmt_xmr(v: float | None) -> str:
 
 
 def _render_node_section(node: MoneroNodeSnapshot) -> list[str]:
+    endpoint = getattr(node, "endpoint", None) or "—"
     lines = [
         "",
-        "=== Local monerod (node) ===",
+        "=== monerod RPC (node) ===",
         f"Fetched: {node.fetched_at}",
-        f"Status: {node.status_label}",
+        f"Status: {node.status_label} · endpoint={endpoint}",
     ]
     if not node.api_ok:
-        lines.append(f"RPC: {node.error} · process={'yes' if node.process_running else 'no'}")
-        lines.append(f"Binary: {'ok' if node.binary_present else 'missing'} · data {node.data_dir or '—'}")
+        lines.append(f"RPC: {node.error} · path_up={'yes' if node.process_running else 'no'}")
+        lines.append(
+            f"Local binary: {'ok' if node.binary_present else 'missing'} · "
+            f"data {node.data_dir or '—'} (optional; default is 5800x tunnel)"
+        )
         return lines
     lines.append(
         f"Height: {node.height}/{node.target_height} "
@@ -60,7 +64,7 @@ def _render_node_section(node: MoneroNodeSnapshot) -> list[str]:
         f"Peers: out {node.peers_out} / in {node.peers_in} · "
         f"txs {node.tx_count} · db {node.database_gb} GB · {node.version or '—'}"
     )
-    lines.append(f"RPC {node.rpc_url} · data {node.data_dir or '—'}")
+    lines.append(f"RPC {node.rpc_url} · endpoint {endpoint}")
     return lines
 
 
@@ -307,25 +311,27 @@ def render_html(
     <div><dt>DB size</dt><dd>{node.database_gb} GB</dd></div>
     <div><dt>Version</dt><dd>{html.escape(node.version or '—')}</dd></div>
     <div><dt>RPC</dt><dd>{html.escape(node.rpc_url)}</dd></div>
+    <div><dt>Endpoint</dt><dd>{html.escape(getattr(node, 'endpoint', None) or '—')}</dd></div>
     <div><dt>Data</dt><dd>{html.escape(node.data_dir or '—')}</dd></div>
   </dl>
-  <p class="note">Local monerod · leave running for wallet/privacy</p>"""
+  <p class="note">monerod RPC · default path is 5800x via SSH tunnel on :18081</p>"""
         else:
             node_body = f"""
   <dl>
-    <div><dt>Process</dt><dd>{'yes' if node.process_running else 'no'}</dd></div>
+    <div><dt>Path up</dt><dd>{'yes' if node.process_running else 'no'}</dd></div>
+    <div><dt>Endpoint</dt><dd>{html.escape(getattr(node, 'endpoint', None) or '—')}</dd></div>
     <div><dt>Binary</dt><dd>{'ok' if node.binary_present else 'missing'}</dd></div>
     <div><dt>Data</dt><dd>{html.escape(node.data_dir or '—')}</dd></div>
     <div><dt>Error</dt><dd>{html.escape(node.error or '—')}</dd></div>
   </dl>
-  <p class="note">Start: <code>python fleet_status.py --start-node</code> or main monerod-start.py</p>"""
+  <p class="note">Ensure: <code>python fleet_status.py --start-node</code> → monerod-ensure-rpc (5800x tunnel)</p>"""
         cards.append(
             f"""
 <article class="card {sc}">
   <header>
     <span class="badge">{html.escape(node.status_label)}</span>
     <h2>monerod</h2>
-    <p class="meta">local node · K:\\Monero</p>
+    <p class="meta">RPC · 5800x tunnel or optional local</p>
   </header>
   {node_body}
 </article>"""
