@@ -1,4 +1,8 @@
-"""Local monerod node status (+ optional start via helper script)."""
+"""Monerod RPC status (+ optional ensure via tunnel or local start helper).
+
+Default on this fleet (2026-08-04): 127.0.0.1:18081 is the linux-5800x node
+via SSH local forward. Local monerod.exe / K:\\Monero is optional backup only.
+"""
 
 from __future__ import annotations
 
@@ -36,11 +40,11 @@ def _default_data() -> Path:
 
 
 def _default_start_script() -> Path:
+    """Prefer tunnel ensure (5800x); fall back to legacy local monerod-start."""
     env = os.environ.get("MONEROD_START_SCRIPT", "").strip()
     if env:
         return Path(env)
-    # Optional Hermes helper if present; otherwise --start-node reports missing
-    return (
+    main_scripts = (
         Path.home()
         / "AppData"
         / "Local"
@@ -48,8 +52,11 @@ def _default_start_script() -> Path:
         / "profiles"
         / "main"
         / "scripts"
-        / "monerod-start.py"
     )
+    ensure = main_scripts / "monerod-ensure-rpc.py"
+    if ensure.is_file():
+        return ensure
+    return main_scripts / "monerod-start.py"
 
 
 DEFAULT_BINARY = _default_binary()
@@ -79,19 +86,22 @@ class MoneroNodeSnapshot:
     update_available: bool | None = None
     data_dir: str | None = None
     binary_present: bool | None = None
+    # How RPC is served on this machine: local monerod.exe, ssh tunnel, or unknown
+    endpoint: str | None = None
 
     @property
     def status_label(self) -> str:
-        if not self.process_running and not self.api_ok:
-            return "DOWN"
-        if self.process_running and not self.api_ok:
-            return "STARTING"
+        # RPC answering is enough — tunnel has no monerod.exe on this host
         if self.api_ok and self.synchronized:
             return "SYNCED"
         if self.api_ok and (self.behind or 0) > 0:
             return "SYNCING"
         if self.api_ok:
             return "UP"
+        if self.process_running and not self.api_ok:
+            return "STARTING"
+        if not self.process_running and not self.api_ok:
+            return "DOWN"
         return "UNKNOWN"
 
 
@@ -116,6 +126,44 @@ def process_running() -> bool:
             return bool(out.strip())
         except Exception:
             return False
+
+
+def tunnel_listening(port: int = 18081) -> bool:
+    """True if something named ssh is listening on the monerod RPC port (Windows)."""
+    if os.name != "nt":
+        return False
+    try:
+        ps = (
+            f"$c = @(Get-NetTCPConnection -LocalPort {port} -State Listen "
+            f"-ErrorAction SilentlyContinue); "
+            f"if ($c.Count -eq 0) {{ Write-Output 'no'; return }}; "
+            f"$names = foreach ($x in $c) {{ "
+            f"(Get-Process -Id $x.OwningProcess -ErrorAction SilentlyContinue).ProcessName }}; "
+            f"Write-Output (($names | Where-Object {{ $_ }}) -join ',')"
+        )
+        out = subprocess.check_output(
+            ["powershell.exe", "-NoProfile", "-Command", ps],
+            text=True,
+            errors="replace",
+            timeout=20,
+        ).strip().lower()
+        return "ssh" in out
+    except Exception:
+        return False
+
+
+def detect_endpoint(rpc_ok: bool, local_monerod: bool) -> str:
+    if local_monerod and rpc_ok:
+        return "local-monerod"
+    if tunnel_listening() and rpc_ok:
+        return "ssh-tunnel-5800x"
+    if rpc_ok:
+        return "rpc-ok"
+    if local_monerod:
+        return "local-monerod-no-rpc"
+    if tunnel_listening():
+        return "ssh-tunnel-no-rpc"
+    return "down"
 
 
 def _rpc(method: str, rpc_url: str = DEFAULT_RPC, timeout: float = 20.0) -> dict | None:
@@ -144,15 +192,27 @@ def fetch_monerod(
     now = datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
     alive = process_running()
     info = _rpc("get_info", rpc_url=rpc_url)
+    endpoint = detect_endpoint(bool(info), alive)
+    # "process_running" for UI: local monerod OR healthy tunnel counts as path up
+    path_up = alive or (bool(info) and endpoint.startswith("ssh-tunnel")) or bool(info)
+
     if not info:
+        err = "RPC not answering"
+        if endpoint == "down":
+            err = "RPC down (no local monerod, no 5800x tunnel)"
+        elif endpoint == "ssh-tunnel-no-rpc":
+            err = "SSH tunnel on 18081 but monerod RPC not answering"
+        elif endpoint == "local-monerod-no-rpc":
+            err = "local monerod.exe up but RPC not answering"
         return MoneroNodeSnapshot(
             fetched_at=now,
             api_ok=False,
-            error="RPC not answering" if alive else "monerod not running",
-            process_running=alive,
+            error=err,
+            process_running=path_up,
             rpc_url=rpc_url,
             data_dir=str(data_dir),
             binary_present=binary.is_file(),
+            endpoint=endpoint,
         )
 
     h = int(info.get("height") or 0)
@@ -165,7 +225,7 @@ def fetch_monerod(
         fetched_at=now,
         api_ok=True,
         error=None,
-        process_running=alive or True,
+        process_running=path_up,
         rpc_url=rpc_url,
         height=h,
         target_height=t,
@@ -188,6 +248,7 @@ def fetch_monerod(
         else None,
         data_dir=str(data_dir),
         binary_present=binary.is_file(),
+        endpoint=endpoint,
     )
 
 
@@ -195,7 +256,7 @@ def start_monerod(
     start_script: Path | None = None,
     timeout: float = 90.0,
 ) -> tuple[int, str]:
-    """Idempotent start via optional helper script (detached launcher)."""
+    """Idempotent ensure RPC (default: 5800x SSH tunnel helper)."""
     start_script = start_script if start_script is not None else _default_start_script()
     if not start_script.is_file():
         return 1, f"start script missing: {start_script}"
@@ -209,9 +270,9 @@ def start_monerod(
             errors="replace",
         )
     except subprocess.TimeoutExpired:
-        return 1, "monerod-start timed out"
+        return 1, "monerod ensure timed out"
     except Exception as e:  # noqa: BLE001
-        return 1, f"monerod-start failed: {e}"
+        return 1, f"monerod ensure failed: {e}"
     out = ((proc.stdout or "") + (proc.stderr or "")).strip()
     return proc.returncode, out or f"exit {proc.returncode}"
 
@@ -223,6 +284,7 @@ def monerod_to_dict(snap: MoneroNodeSnapshot) -> dict[str, Any]:
         "error": snap.error,
         "status": snap.status_label,
         "process_running": snap.process_running,
+        "endpoint": snap.endpoint,
         "rpc_url": snap.rpc_url,
         "height": snap.height,
         "target_height": snap.target_height,

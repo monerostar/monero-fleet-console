@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Monero Fleet Console CLI (Hive OS + HashVault + local monerod).
+"""Monero Fleet Console CLI (Hive OS + HashVault + monerod RPC).
+
+Default node path on tech: 127.0.0.1:18081 → linux-5800x via SSH tunnel
+(monerod-ensure-rpc). Local monerod.exe is optional/manual only.
 
 Examples:
   python fleet_status.py
@@ -35,7 +38,7 @@ from fleet_console.watchdog import run_watchdog  # noqa: E402
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(
-        description="Monero fleet status via Hive OS + HashVault + local monerod"
+        description="Monero fleet status via Hive OS + HashVault + monerod RPC"
     )
     p.add_argument("--json", action="store_true", help="JSON snapshot to stdout")
     p.add_argument("--html", action="store_true", help="Write dark HTML dashboard")
@@ -62,12 +65,12 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument(
         "--no-node",
         action="store_true",
-        help="Skip local monerod RPC",
+        help="Skip monerod RPC (localhost, usually 5800x tunnel)",
     )
     p.add_argument(
         "--start-node",
         action="store_true",
-        help="Idempotently start monerod (detached) then continue status",
+        help="Ensure monerod RPC (default: 5800x SSH tunnel) then continue status",
     )
     args = p.parse_args(argv)
 
