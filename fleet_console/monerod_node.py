@@ -6,11 +6,15 @@ via SSH local forward. Local monerod.exe / K:\\Monero is optional backup only.
 
 from __future__ import annotations
 
+import ctypes
 import json
 import os
+import socket
+import struct
 import subprocess
 import urllib.error
 import urllib.request
+from ctypes import wintypes
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -105,6 +109,12 @@ class MoneroNodeSnapshot:
         return "UNKNOWN"
 
 
+def _no_win() -> dict:
+    if os.name != "nt":
+        return {}
+    return {"creationflags": getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)}
+
+
 def process_running() -> bool:
     try:
         out = subprocess.check_output(
@@ -112,6 +122,7 @@ def process_running() -> bool:
             text=True,
             errors="replace",
             timeout=15,
+            **_no_win(),
         )
         return "monerod.exe" in out.lower()
     except Exception:
@@ -128,26 +139,60 @@ def process_running() -> bool:
             return False
 
 
+def _image_name(pid: int) -> str:
+    PROCESS_QUERY_LIMITED = 0x1000
+    h = ctypes.windll.kernel32.OpenProcess(PROCESS_QUERY_LIMITED, False, pid)
+    if not h:
+        return ""
+    try:
+        buf = ctypes.create_unicode_buffer(32768)
+        size = wintypes.DWORD(32768)
+        ok = ctypes.windll.kernel32.QueryFullProcessImageNameW(
+            h, 0, buf, ctypes.byref(size)
+        )
+        return buf.value if ok else ""
+    finally:
+        ctypes.windll.kernel32.CloseHandle(h)
+
+
 def tunnel_listening(port: int = 18081) -> bool:
-    """True if something named ssh is listening on the monerod RPC port (Windows)."""
+    """True if something named ssh is listening on the monerod RPC port (Windows).
+
+    Stdlib ctypes only. Do not spawn powershell.exe — Windows Terminal (default
+    terminal) will flash a tab and steal focus.
+    """
     if os.name != "nt":
         return False
     try:
-        ps = (
-            f"$c = @(Get-NetTCPConnection -LocalPort {port} -State Listen "
-            f"-ErrorAction SilentlyContinue); "
-            f"if ($c.Count -eq 0) {{ Write-Output 'no'; return }}; "
-            f"$names = foreach ($x in $c) {{ "
-            f"(Get-Process -Id $x.OwningProcess -ErrorAction SilentlyContinue).ProcessName }}; "
-            f"Write-Output (($names | Where-Object {{ $_ }}) -join ',')"
+        iphlpapi = ctypes.WinDLL("iphlpapi")
+        af_inet = 2
+        tcp_table_owner_pid_all = 5
+        listen_state = 2
+        size = wintypes.DWORD(0)
+        iphlpapi.GetExtendedTcpTable(
+            None, ctypes.byref(size), False, af_inet, tcp_table_owner_pid_all, 0
         )
-        out = subprocess.check_output(
-            ["powershell.exe", "-NoProfile", "-Command", ps],
-            text=True,
-            errors="replace",
-            timeout=20,
-        ).strip().lower()
-        return "ssh" in out
+        buf = ctypes.create_string_buffer(size.value)
+        rc = iphlpapi.GetExtendedTcpTable(
+            buf, ctypes.byref(size), False, af_inet, tcp_table_owner_pid_all, 0
+        )
+        if rc != 0:
+            return False
+        data = buf.raw
+        n = struct.unpack_from("<I", data, 0)[0]
+        off = 4
+        for _ in range(n):
+            state, _laddr, lport, _raddr, _rport, pid = struct.unpack_from(
+                "<IIIIII", data, off
+            )
+            off += 24
+            if state != listen_state:
+                continue
+            if socket.ntohs(lport & 0xFFFF) != port:
+                continue
+            if "ssh" in _image_name(pid).lower():
+                return True
+        return False
     except Exception:
         return False
 
@@ -268,6 +313,7 @@ def start_monerod(
             timeout=timeout,
             encoding="utf-8",
             errors="replace",
+            **_no_win(),
         )
     except subprocess.TimeoutExpired:
         return 1, "monerod ensure timed out"
