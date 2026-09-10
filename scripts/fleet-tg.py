@@ -222,7 +222,7 @@ NON_HIVE = {
         "host": "legion-go",
         "label": "Legion",
         "stop": "taskkill /F /IM xmrig.exe /T 2>nul",
-        "start": "schtasks /Run /tn legion-privacy-6t 2>nul || start \"\" \"C:\\xmrig\\xmrig-6.26.0\\xmrig.exe\" -c \"C:\\xmrig\\xmrig-6.26.0\\config-6t-privacy.json\"",
+        "start": "schtasks /Run /tn legion-mini-6t 2>nul || start \"\" \"C:\\xmrig\\xmrig-6.26.0\\xmrig.exe\" -c \"C:\\xmrig\\xmrig-6.26.0\\config-6t-mini.json\"",
     },
 }
 
@@ -320,11 +320,10 @@ def cmd_monday() -> str:
 def cmd_legion(args) -> str:
     side = (args.side or "on").lower()
     if side == "off":
-        cmd = "schtasks /Delete /tn legion-privacy-6t /f 2>nul & taskkill /F /IM xmrig.exe /T 2>nul & echo LEGION_OFF"
+        cmd = "taskkill /F /IM xmrig.exe /T 2>nul & echo LEGION_OFF"
     else:
-        cmd = ("taskkill /F /IM xmrig.exe /T 2>nul & schtasks /Delete /tn legion-privacy-6t /f 2>nul & "
-               "schtasks /Create /tn legion-privacy-6t /tr \"C:\\xmrig\\xmrig-6.26.0\\xmrig.exe -c C:\\xmrig\\xmrig-6.26.0\\config-6t-privacy.json\" "
-               "/sc once /st 00:00 /ru SYSTEM /rl HIGHEST /f & schtasks /Run /tn legion-privacy-6t & echo LEGION_ON")
+        cmd = ("taskkill /F /IM xmrig.exe /T 2>nul & "
+               "schtasks /Run /tn legion-mini-6t & echo LEGION_ON")
     r = subprocess.run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=12", "legion-go", cmd],
                        capture_output=True, text=True, timeout=90)
     out = (r.stdout or "").strip().splitlines()

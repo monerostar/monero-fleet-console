@@ -11,9 +11,11 @@ ticket share and moves ONE always-on Hive worker at a time:
 Default is DRY-RUN (prints the plan). Pass --apply to actually PATCH Hive FS.
 
 Always-on lottery foot (env worker/FS ids):
-  3950X, 3600XT, 5700X (24/7 soon; offline OK while placing)
+  3950X, 5700X, 3600XT
 Flex (only flipped if currently online + already in the pairs):
   3700X Asher (~10d/mo when home)
+Add-to-privacy order (captain 2026-08-16): 3950X → 5700X → 3600XT → 3700 flex.
+Not on this script: 5800X / Family / Legion (not Hive).
 
 Thresholds (env overrides):
   PRIVACY_SHARE_LOW=0.20   # below → add privacy
@@ -162,8 +164,8 @@ def main() -> int:
 
     try:
         farm = os.environ["HIVEOS_FARM_ID"]
-        # Always-on ladder. Peel order = biggest ticket chunk first when share high.
-        # Add order = reverse (bring smallest/cheapest tickets back first).
+        # Always-on ladder. Peel order = 5700 then 3950 then 3600 (biggest first).
+        # Add order = 3950 then 5700 then 3600 (captain 2026-08-16). 3700 flex last.
         boxes = [
             {
                 "key": "5700X",
@@ -235,17 +237,18 @@ def main() -> int:
         peel_order = [b for b in live if b["key"] in ("5700X", "3950X", "3600XT", "3700X")]
         for b in peel_order:
             if b.get("online") and b.get("fs_id") == b["priv"]:
-                action, target, new_fs, label = "peel_to_hv", b, b["hv"], f"{b['key']} → HV"
+                action, target, new_fs, label = "peel_to_hv", b, b["hv"], f"{b['key']} -> HV"
                 break
         if target is None:
             print(f"NO_PEEL_CANDIDATE {header} (nobody on privacy)")
             return 0
     else:
         # share < low: add privacy. Prefer always-on currently on HV; skip offline flex.
-        add_order = [b for b in live if b["key"] in ("3600XT", "3950X", "5700X", "3700X")]
+        add_order_keys = ("3950X", "5700X", "3600XT", "3700X")
+        add_order = [next(b for b in live if b["key"] == k) for k in add_order_keys]
         for b in add_order:
             if b.get("online") and b.get("fs_id") == b["hv"]:
-                action, target, new_fs, label = "add_privacy", b, b["priv"], f"{b['key']} → privacy"
+                action, target, new_fs, label = "add_privacy", b, b["priv"], f"{b['key']} -> privacy"
                 break
         if target is None:
             print(f"NO_ADD_CANDIDATE {header} (nobody on HV to pull back)")
