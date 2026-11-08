@@ -1,6 +1,6 @@
 """Monerod RPC status (+ optional ensure via tunnel or local start helper).
 
-Default on this fleet (2026-08-04): 127.0.0.1:18081 is the linux-5800x node
+Common pattern (2026-08-04): 127.0.0.1:18081 served by an SSH local-forward
 via SSH local forward. Local monerod.exe / K:\\Monero is optional backup only.
 """
 
@@ -44,7 +44,7 @@ def _default_data() -> Path:
 
 
 def _default_start_script() -> Path:
-    """Prefer tunnel ensure (5800x); fall back to legacy local monerod-start."""
+    """Prefer tunnel-ensure; fall back to legacy local monerod-start."""
     env = os.environ.get("MONEROD_START_SCRIPT", "").strip()
     if env:
         return Path(env)
@@ -244,7 +244,7 @@ def fetch_monerod(
     if not info:
         err = "RPC not answering"
         if endpoint == "down":
-            err = "RPC down (no local monerod, no 5800x tunnel)"
+            err = "RPC down (no local monerod, no SSH tunnel)"
         elif endpoint == "ssh-tunnel-no-rpc":
             err = "SSH tunnel on 18081 but monerod RPC not answering"
         elif endpoint == "local-monerod-no-rpc":
@@ -301,7 +301,7 @@ def start_monerod(
     start_script: Path | None = None,
     timeout: float = 90.0,
 ) -> tuple[int, str]:
-    """Idempotent ensure RPC (default: 5800x SSH tunnel helper)."""
+    """Idempotent ensure RPC (default: SSH tunnel helper)."""
     start_script = start_script if start_script is not None else _default_start_script()
     if not start_script.is_file():
         return 1, f"start script missing: {start_script}"

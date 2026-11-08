@@ -53,7 +53,7 @@ def _render_node_section(node: MoneroNodeSnapshot) -> list[str]:
         lines.append(f"RPC: {node.error} · path_up={'yes' if node.process_running else 'no'}")
         lines.append(
             f"Local binary: {'ok' if node.binary_present else 'missing'} · "
-            f"data {node.data_dir or '—'} (optional; default is 5800x tunnel)"
+            f"data {node.data_dir or '—'} (optional; default is a remote node over an SSH tunnel)"
         )
         return lines
     lines.append(
@@ -314,7 +314,7 @@ def render_html(
     <div><dt>Endpoint</dt><dd>{html.escape(getattr(node, 'endpoint', None) or '—')}</dd></div>
     <div><dt>Data</dt><dd>{html.escape(node.data_dir or '—')}</dd></div>
   </dl>
-  <p class="note">monerod RPC · default path is 5800x via SSH tunnel on :18081</p>"""
+  <p class="note">monerod RPC · common path: SSH tunnel to a remote node on :18081</p>"""
         else:
             node_body = f"""
   <dl>
@@ -324,14 +324,14 @@ def render_html(
     <div><dt>Data</dt><dd>{html.escape(node.data_dir or '—')}</dd></div>
     <div><dt>Error</dt><dd>{html.escape(node.error or '—')}</dd></div>
   </dl>
-  <p class="note">Ensure: <code>python fleet_status.py --start-node</code> → monerod-ensure-rpc (5800x tunnel)</p>"""
+  <p class="note">Ensure: <code>python fleet_status.py --start-node</code> → your tunnel-ensure helper</p>"""
         cards.append(
             f"""
 <article class="card {sc}">
   <header>
     <span class="badge">{html.escape(node.status_label)}</span>
     <h2>monerod</h2>
-    <p class="meta">RPC · 5800x tunnel or optional local</p>
+    <p class="meta">RPC · SSH-tunneled remote node or optional local</p>
   </header>
   {node_body}
 </article>"""

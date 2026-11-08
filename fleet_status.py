@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Monero Fleet Console CLI (Hive OS + HashVault + monerod RPC).
 
-Default node path on tech: 127.0.0.1:18081 → linux-5800x via SSH tunnel
-(monerod-ensure-rpc). Local monerod.exe is optional/manual only.
+Common node path: 127.0.0.1:18081 → remote node host via SSH tunnel
+(use your own tunnel-ensure helper). Local monerod.exe is optional/manual only.
 
 Examples:
   python fleet_status.py
@@ -65,12 +65,12 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument(
         "--no-node",
         action="store_true",
-        help="Skip monerod RPC (localhost, usually 5800x tunnel)",
+        help="Skip monerod RPC (localhost, usually via SSH tunnel)",
     )
     p.add_argument(
         "--start-node",
         action="store_true",
-        help="Ensure monerod RPC (default: 5800x SSH tunnel) then continue status",
+        help="Ensure monerod RPC (via SSH tunnel helper) then continue status",
     )
     args = p.parse_args(argv)
 
