@@ -13,7 +13,7 @@ Default is DRY-RUN (prints the plan). Pass --apply to actually PATCH Hive FS.
 Always-on lottery foot (env worker/FS ids):
   3950X, 5700X, 3600XT
 Flex (only flipped if currently online + already in the pairs):
-  3700X kid-b (~10d/mo when home)
+  3700X flex seat (home cadence)
 Add-to-privacy order (captain 2026-08-16): 3950X → 5700X → 3600XT → 3700 flex.
 Not on this script: 5800X / Family / Legion (not Hive).
 
@@ -193,7 +193,7 @@ def main() -> int:
                 "wid": env_int("HIVE_WORKER_3700X"),
                 "priv": env_int("HIVE_FS_3700X_PRIV"),
                 "hv": env_int("HIVE_FS_3700X_HV"),
-                "role": "flex",  # kid-b — only if online
+                "role": "flex",  # flex seat — only if online
             },
         ]
     except KeyError as e:

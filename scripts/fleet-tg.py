@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """fleet-tg.py — Telegram dispatcher backend for privacy lottery <-> HashVault.
 
-Main profile runs this when Dustin texts a fleet command. Reads Hive
+Main profile runs this when the operator texts a fleet command. Reads Hive
 credentials + FS IDs from tech .env (never shown in chat). Prints short,
 Telegram-friendly replies only.
 
@@ -111,7 +111,7 @@ HELP = """Fleet commands (phone -> main Telegram):
   fleet 5700 priv   force 5700X to privacy
   fleet 3950 hv|priv   same
   fleet 3600 hv|priv   same
-  fleet 3700 hv|priv   same (kid-b flex, offline OK)
+  fleet 3700 hv|priv   same (flex seat, offline OK)
   fleet <box> stop  stop ONE box's miner (5700|3950|3600|3700|5800|family|legion)
   fleet <box> start start ONE box's miner again
   fleet weekend     run Friday weekend flip now

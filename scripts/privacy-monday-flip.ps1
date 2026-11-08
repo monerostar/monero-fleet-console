@@ -1,5 +1,5 @@
 # Privacy Monday flip — lottery foot back on (after weekend HV)
-# kid-b 3700X flex: apply privacy FS if online; offline is OK (dad/home).
+# 3700X flex seat: apply privacy FS if online; offline is OK (home seat).
 # Scheduled: Mon ~08:00 MDT as privacy-monday-flip (optional; safe to run manual).
 $ErrorActionPreference = 'Continue'
 $Log = "C:\Users\Admin\src\monero-fleet-console\scripts\privacy-monday-flip-last.log"
@@ -12,7 +12,7 @@ function Log([string]$m) {
 Log 'BEGIN privacy Monday flip (lottery foot)'
 
 # Hive: privacy flight sheets
-Log 'Hive: privacy FS 3950 + 3600XT + 5700X always-on + 3700X kid-b flex'
+Log 'Hive: privacy FS 3950 + 3600XT + 5700X always-on + 3700X flex seat'
 python - << 'PY'
 import os, json, urllib.request
 from pathlib import Path
@@ -31,7 +31,7 @@ farm=os.environ.get("HIVEOS_FARM_ID")  # required, gitignored
 pairs=[
     (int(os.environ["HIVE_WORKER_3950X"]), int(os.environ["HIVE_FS_3950X_PRIV"]), "3950 privacy"),
     (int(os.environ["HIVE_WORKER_3600XT"]), int(os.environ["HIVE_FS_3600XT_PRIV"]), "3600XT privacy 5t"),
-    (int(os.environ["HIVE_WORKER_3700X"]), int(os.environ["HIVE_FS_3700X_PRIV"]), "3700X privacy 8t kid-b flex"),
+    (int(os.environ["HIVE_WORKER_3700X"]), int(os.environ["HIVE_FS_3700X_PRIV"]), "3700X privacy 8t flex seat"),
     (int(os.environ["HIVE_WORKER_5700X"]), int(os.environ["HIVE_FS_5700X_PRIV"]), "5700X privacy 15t"),
 ]
 
@@ -56,7 +56,7 @@ for wid, fs, name in pairs:
         st = hive(f"/farms/{farm}/workers/{wid}", method="PATCH", body={"fs_id": fs})
         print(name, "HTTP", st)
     except Exception as e:
-        print(name, "FAIL (offline OK for kid-b)", type(e).__name__, e)
+        print(name, "FAIL (offline OK for flex seat)", type(e).__name__, e)
 print("HIVE_PRIVACY_OK")
 PY
 
@@ -69,8 +69,8 @@ try {
   ssh -o BatchMode=yes -o ConnectTimeout=12 home-pc 'schtasks /End /tn family-hashvault-10t 2>nul & taskkill /F /IM xmrig.exe /T 2>nul & schtasks /Run /tn family-lottery-10t 2>nul || (schtasks /Create /tn family-lottery-10t /tr "powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\xmrig\xmrig-6.26.0\family-lottery-10t.ps1" /sc once /st 00:00 /ru SYSTEM /rl HIGHEST /f & schtasks /Run /tn family-lottery-10t) & echo FAMILY_LOTTERY'
 } catch { Log "Family skip: $_" }
 
-# Legion: leave OFF by default (kid-a handheld test-only)
+# Legion handheld: leave OFF by default (test-only seat)
 Log 'Legion: leave stopped (test-only; start manual if wanted)'
 
 Log 'DONE Monday flip'
-Log 'Always-on: 3950+3600XT+5700X. kid-b 3700X flex ~10d/mo when home; offline OK'
+Log 'Always-on: 3950+3600XT+5700X. 3700X flex seat when home (cadence varies); offline OK'
